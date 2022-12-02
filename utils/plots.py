@@ -113,20 +113,20 @@ def plot_skeleton_kpts(im, kpts, steps, orig_shape=None):
                     continue
             cv2.circle(im, (int(x_coord), int(y_coord)), radius, (int(r), int(g), int(b)), -1)
 
-    for sk_id, sk in enumerate(skeleton):
-        r, g, b = pose_limb_color[sk_id]
-        pos1 = (int(kpts[(sk[0]-1)*steps]), int(kpts[(sk[0]-1)*steps+1]))
-        pos2 = (int(kpts[(sk[1]-1)*steps]), int(kpts[(sk[1]-1)*steps+1]))
-        if steps == 3:
-            conf1 = kpts[(sk[0]-1)*steps+2]
-            conf2 = kpts[(sk[1]-1)*steps+2]
-            if conf1<0.5 or conf2<0.5:
-                continue
-        if pos1[0]%640 == 0 or pos1[1]%640==0 or pos1[0]<0 or pos1[1]<0:
-            continue
-        if pos2[0] % 640 == 0 or pos2[1] % 640 == 0 or pos2[0]<0 or pos2[1]<0:
-            continue
-        cv2.line(im, pos1, pos2, (int(r), int(g), int(b)), thickness=2)
+    # for sk_id, sk in enumerate(skeleton):
+    #     r, g, b = pose_limb_color[sk_id]
+    #     pos1 = (int(kpts[(sk[0]-1)*steps]), int(kpts[(sk[0]-1)*steps+1]))
+    #     pos2 = (int(kpts[(sk[1]-1)*steps]), int(kpts[(sk[1]-1)*steps+1]))
+    #     if steps == 3:
+    #         conf1 = kpts[(sk[0]-1)*steps+2]
+    #         conf2 = kpts[(sk[1]-1)*steps+2]
+    #         if conf1<0.5 or conf2<0.5:
+    #             continue
+    #     if pos1[0]%640 == 0 or pos1[1]%640==0 or pos1[0]<0 or pos1[1]<0:
+    #         continue
+    #     if pos2[0] % 640 == 0 or pos2[1] % 640 == 0 or pos2[0]<0 or pos2[1]<0:
+    #         continue
+    #     cv2.line(im, pos1, pos2, (int(r), int(g), int(b)), thickness=2)
 
 
 def plot_one_box_PIL(box, im, color=None, label=None, line_thickness=None):
@@ -216,7 +216,7 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
             image_targets = targets[targets[:, 0] == i]
             boxes = xywh2xyxy(image_targets[:, 2:6]).T
             classes = image_targets[:, 1].astype('int')
-            labels = image_targets.shape[1] == 40 if kpt_label else image_targets.shape[1] == 6   # labels if no conf column
+            labels = image_targets.shape[1] == 16 if kpt_label else image_targets.shape[1] == 6   # labels if no conf column
             conf = None if labels else image_targets[:, 6]  # check for confidence presence (label vs pred)
             if kpt_label:
                 if conf is None:
@@ -251,6 +251,7 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
                 cls = names[cls] if names else cls
                 if labels or conf[j] > 0.1:  # 0.25 conf thresh
                     label = '%s' % cls if labels else '%s %.1f' % (cls, conf[j])
+                    # raise "Error"
                     if kpt_label:
                         plot_one_box(box, mosaic, label=label, color=color, line_thickness=tl, kpt_label=kpt_label, kpts=kpts[:,j], steps=steps, orig_shape=orig_shape)
                     else:

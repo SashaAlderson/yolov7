@@ -493,16 +493,18 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                     if len(l):
                         assert (l >= 0).all(), 'negative labels'
                         if kpt_label:
-                            assert l.shape[1] == 56, 'labels require 56 columns each'
+                            assert l.shape[1] == 20, 'labels require 20 columns each'
+                            # if not (l[:, 5::3] <= 1).all():
+                            #     print(l)
                             assert (l[:, 5::3] <= 1).all(), 'non-normalized or out of bounds coordinate labels'
                             assert (l[:, 6::3] <= 1).all(), 'non-normalized or out of bounds coordinate labels'
                             # print("l shape", l.shape)
-                            kpts = np.zeros((l.shape[0], 39))
+                            kpts = np.zeros((l.shape[0], 15))
                             for i in range(len(l)):
                                 kpt = np.delete(l[i,5:], np.arange(2, l.shape[1]-5, 3))  #remove the occlusion paramater from the GT
                                 kpts[i] = np.hstack((l[i, :5], kpt))
                             l = kpts
-                            assert l.shape[1] == 39, 'labels require 39 columns each after removing occlusion paramater'
+                            assert l.shape[1] == 15, 'labels require 15 columns each after removing occlusion paramater'
                         else:
                             assert l.shape[1] == 5, 'labels require 5 columns each'
                             assert (l[:, 1:5] <= 1).all(), 'non-normalized or out of bounds coordinate labels'
@@ -510,11 +512,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         assert np.unique(l, axis=0).shape[0] == l.shape[0], 'duplicate labels'
                     else:
                         ne += 1  # label empty
-                        l = np.zeros((0, 39), dtype=np.float32) if kpt_label else np.zeros((0, 5), dtype=np.float32)
+                        l = np.zeros((0, 15), dtype=np.float32) if kpt_label else np.zeros((0, 5), dtype=np.float32)
 
                 else:
                     nm += 1  # label missing
-                    l = np.zeros((0, 39), dtype=np.float32) if kpt_label else np.zeros((0, 5), dtype=np.float32)
+                    l = np.zeros((0, 15), dtype=np.float32) if kpt_label else np.zeros((0, 5), dtype=np.float32)
 
                 x[im_file] = [l, shape, segments]
             except Exception as e:
@@ -617,14 +619,18 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         labels[:, 6::2]= (1-labels[:, 6::2])*(labels[:, 6::2]!=0)
 
             # flip left-right
-            if random.random() < hyp['fliplr']:
-                img = np.fliplr(img)
-                if nL:
-                    labels[:, 1] = 1 - labels[:, 1]
-                    if self.kpt_label:
-                        labels[:, 5::2] = (1 - labels[:, 5::2])*(labels[:, 5::2]!=0)
-                        labels[:, 5::2] = labels[:, 5::2][:, self.flip_index]
-                        labels[:, 6::2] = labels[:, 6::2][:, self.flip_index]
+            # if random.random() < hyp['fliplr']:
+            #     img = np.fliplr(img)
+            #     if nL:
+            #         labels[:, 1] = 1 - labels[:, 1]
+            #         if self.kpt_label:
+            #             # print("Labels:")
+            #             # print(labels)
+            #             print(labels.shape)
+            #             labels[:, 5::2] = (1 - labels[:, 5::2])*(labels[:, 5::2]!=0)
+            #             labels[:, 5::2] = labels[:, 5::2][:, self.flip_index]
+            #             labels[:, 6::2] = labels[:, 6::2][:, self.flip_index]
+            #             print(labels.shape)
 
         num_kpts = (labels.shape[1]-5)//2
         labels_out = torch.zeros((nL, 6+2*num_kpts)) if self.kpt_label else torch.zeros((nL, 6))
@@ -924,6 +930,7 @@ def random_perspective(img, targets=(), segments=(), degrees=10, translate=.1, s
     # Rotation and Scale
     R = np.eye(3)
     a = random.uniform(-degrees, degrees)
+    # a = np.random.choice([-degrees, 0, degrees, 0])
     # a += random.choice([-180, -90, 0, 90])  # add 90deg rotations to small rotations
     s = random.uniform(1 - scale, 1 + scale)
     # s = 2 ** random.uniform(-scale, scale)
@@ -983,18 +990,18 @@ def random_perspective(img, targets=(), segments=(), degrees=10, translate=.1, s
             new[:, [0, 2]] = new[:, [0, 2]].clip(0, width)
             new[:, [1, 3]] = new[:, [1, 3]].clip(0, height)
             if kpt_label:
-                xy_kpts = np.ones((n * 17, 3))
-                xy_kpts[:, :2] = targets[:,5:].reshape(n*17, 2)  #num_kpt is hardcoded to 17
+                xy_kpts = np.ones((n * 5, 3))
+                xy_kpts[:, :2] = targets[:,5:].reshape(n*5, 2)  #num_kpt is hardcoded to 17
                 xy_kpts = xy_kpts @ M.T # transform
-                xy_kpts = (xy_kpts[:, :2] / xy_kpts[:, 2:3] if perspective else xy_kpts[:, :2]).reshape(n, 34)  # perspective rescale or affine
+                xy_kpts = (xy_kpts[:, :2] / xy_kpts[:, 2:3] if perspective else xy_kpts[:, :2]).reshape(n, 10)  # perspective rescale or affine
                 xy_kpts[targets[:,5:]==0] = 0
-                x_kpts = xy_kpts[:, list(range(0,34,2))]
-                y_kpts = xy_kpts[:, list(range(1,34,2))]
+                x_kpts = xy_kpts[:, list(range(0,10,2))]
+                y_kpts = xy_kpts[:, list(range(1,10,2))]
 
                 x_kpts[np.logical_or.reduce((x_kpts < 0, x_kpts > width, y_kpts < 0, y_kpts > height))] = 0
                 y_kpts[np.logical_or.reduce((x_kpts < 0, x_kpts > width, y_kpts < 0, y_kpts > height))] = 0
-                xy_kpts[:, list(range(0, 34, 2))] = x_kpts
-                xy_kpts[:, list(range(1, 34, 2))] = y_kpts
+                xy_kpts[:, list(range(0, 10, 2))] = x_kpts
+                xy_kpts[:, list(range(1, 10, 2))] = y_kpts
 
         # filter candidates
         i = box_candidates(box1=targets[:, 1:5].T * s, box2=new.T, area_thr=0.01 if use_segments else 0.10)
